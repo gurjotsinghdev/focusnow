@@ -1,7 +1,44 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Plus, X, Check, Coffee, Moon, Sun, Timer, Clock, Target, CheckCircle2, ChevronRight, Star, Calendar } from 'lucide-react';
+import { Play, Pause, RotateCcw, Plus, X, Check, Coffee, Moon, Sun, Timer, Clock, Target, CheckCircle2, ChevronRight, Star, Calendar, Pencil, AlertTriangle } from 'lucide-react';
+
+const TASK_NAME_MAX = 120;
+const DEFAULT_ESTIMATE_MINUTES = 30;
+const MIN_ESTIMATE_MINUTES = 5;
+const MAX_ESTIMATE_MINUTES = 480;
+const DURATION_OPTIONS = [10, 25, 30, 45];
+
+const CONFETTI_PIECES = [
+  { x: '-24px', y: '-32px', r: '-25deg', color: '#f97316' },
+  { x: '18px', y: '-34px', r: '20deg', color: '#06b6d4' },
+  { x: '-14px', y: '-8px', r: '15deg', color: '#a855f7' },
+  { x: '26px', y: '-10px', r: '-30deg', color: '#22c55e' },
+  { x: '-6px', y: '-38px', r: '35deg', color: '#eab308' },
+  { x: '6px', y: '-18px', r: '-15deg', color: '#ef4444' },
+];
+
+const SOUND_PATTERNS = {
+  start: [
+    { freq: 660, duration: 0.1, delay: 0, gain: 0.14, type: 'sine' },
+    { freq: 880, duration: 0.12, delay: 0.12, gain: 0.14, type: 'sine' },
+  ],
+  break: [
+    { freq: 520, duration: 0.14, delay: 0, gain: 0.16, type: 'triangle' },
+    { freq: 390, duration: 0.18, delay: 0.16, gain: 0.16, type: 'triangle' },
+  ],
+  complete: [
+    { freq: 784, duration: 0.12, delay: 0, gain: 0.18, type: 'sine' },
+    { freq: 988, duration: 0.14, delay: 0.14, gain: 0.18, type: 'sine' },
+    { freq: 1175, duration: 0.16, delay: 0.3, gain: 0.18, type: 'sine' },
+  ],
+  timeUp: [
+    { freq: 880, duration: 0.24, delay: 0, gain: 0.3, type: 'square' },
+    { freq: 988, duration: 0.24, delay: 0.26, gain: 0.3, type: 'square' },
+    { freq: 1175, duration: 0.26, delay: 0.52, gain: 0.32, type: 'square' },
+    { freq: 1319, duration: 0.28, delay: 0.8, gain: 0.32, type: 'square' },
+  ],
+};
 
 const LandingPage = ({ onGetStarted }) => {
   const features = [
@@ -230,19 +267,28 @@ const LandingPage = ({ onGetStarted }) => {
 const App = () => {
   const [showApp, setShowApp] = useState(false);
   const [tasks, setTasks] = useState([]);
-  const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskName, setNewTaskName] = useState('');
+  const [newTaskEstimate, setNewTaskEstimate] = useState(String(DEFAULT_ESTIMATE_MINUTES));
   const [selectedDuration, setSelectedDuration] = useState(25);
   const [completedPomodoros, setCompletedPomodoros] = useState(0);
   const [showRoutineModal, setShowRoutineModal] = useState(false);
   const [routine, setRoutine] = useState('');
-  const [sessionStartTime, setSessionStartTime] = useState(null);
-  const audioRef = useRef(null);
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [editingTaskName, setEditingTaskName] = useState('');
+  const [editingTaskEstimate, setEditingTaskEstimate] = useState(String(DEFAULT_ESTIMATE_MINUTES));
+  const [overtimeNotice, setOvertimeNotice] = useState(null);
+  const [celebratingTaskId, setCelebratingTaskId] = useState(null);
+  const audioContextRef = useRef(null);
+  const celebrationTimeoutRef = useRef(null);
+  const overtimeTimeoutRef = useRef(null);
+
+  const selectedTask = tasks.find((task) => task.id === selectedTaskId) || null;
 
   useEffect(() => {
     const savedTasks = localStorage.getItem('focusnow-tasks');
@@ -251,7 +297,17 @@ const App = () => {
     const savedRoutine = localStorage.getItem('focusnow-routine');
     const hasSeenLanding = localStorage.getItem('focusnow-seen-landing');
     
-    if (savedTasks) setTasks(JSON.parse(savedTasks));
+    if (savedTasks) {
+      const parsedTasks = JSON.parse(savedTasks);
+      if (Array.isArray(parsedTasks)) {
+        const normalizedTasks = parsedTasks.map((task) => ({
+          ...task,
+          timeSpent: Number(task.timeSpent) || 0,
+          estimatedMinutes: Number(task.estimatedMinutes) || DEFAULT_ESTIMATE_MINUTES,
+        }));
+        setTasks(normalizedTasks);
+      }
+    }
     if (savedDarkMode) setDarkMode(JSON.parse(savedDarkMode));
     if (savedPomodoros) setCompletedPomodoros(JSON.parse(savedPomodoros));
     if (savedRoutine) setRoutine(savedRoutine);
@@ -274,101 +330,281 @@ const App = () => {
     localStorage.setItem('focusnow-routine', routine);
   }, [routine]);
 
+  const playSound = (soundKey) => {
+    const pattern = SOUND_PATTERNS[soundKey];
+    if (!pattern) return;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext();
+    }
+    const context = audioContextRef.current;
+    if (context.state === 'suspended') {
+      context.resume().catch(() => {});
+    }
+    const startAt = context.currentTime + 0.02;
+    pattern.forEach((tone) => {
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+      const toneStart = startAt + (tone.delay || 0);
+      const toneEnd = toneStart + tone.duration;
+      oscillator.type = tone.type || 'sine';
+      oscillator.frequency.setValueAtTime(tone.freq, toneStart);
+      gainNode.gain.setValueAtTime(0.0001, toneStart);
+      gainNode.gain.exponentialRampToValueAtTime(tone.gain || 0.16, toneStart + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, toneEnd);
+      oscillator.connect(gainNode).connect(context.destination);
+      oscillator.start(toneStart);
+      oscillator.stop(toneEnd + 0.05);
+    });
+  };
+
+  const triggerCelebration = (taskId) => {
+    setCelebratingTaskId(taskId);
+    if (celebrationTimeoutRef.current) {
+      clearTimeout(celebrationTimeoutRef.current);
+    }
+    celebrationTimeoutRef.current = setTimeout(() => {
+      setCelebratingTaskId(null);
+    }, 900);
+  };
+
+  const showOvertimeNotice = (task, nextTimeSpent) => {
+    const estimate = Number(task.estimatedMinutes) || 0;
+    const previous = Number(task.timeSpent) || 0;
+    if (estimate > 0 && previous <= estimate && nextTimeSpent > estimate) {
+      setOvertimeNotice({
+        id: task.id,
+        name: task.name,
+        overBy: nextTimeSpent - estimate,
+      });
+      if (overtimeTimeoutRef.current) {
+        clearTimeout(overtimeTimeoutRef.current);
+      }
+      overtimeTimeoutRef.current = setTimeout(() => {
+        setOvertimeNotice(null);
+      }, 4500);
+    }
+  };
+
+  const getRemainingMinutes = (task) => {
+    if (!task) return 0;
+    const estimate = Number(task.estimatedMinutes) || 0;
+    const spent = Number(task.timeSpent) || 0;
+    return Math.max(estimate - spent, 0);
+  };
+
+  const applyTimeToTask = (taskId, minutesSpent) => {
+    if (!taskId || minutesSpent <= 0) return;
+    setTasks((prev) => prev.map((task) => {
+      if (task.id !== taskId) return task;
+      const nextTimeSpent = (task.timeSpent || 0) + minutesSpent;
+      showOvertimeNotice(task, nextTimeSpent);
+      return { ...task, timeSpent: nextTimeSpent };
+    }));
+  };
+
   useEffect(() => {
     let interval = null;
     if (isRunning && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft(time => time - 1);
       }, 1000);
-    } else if (timeLeft === 0) {
+    } else if (timeLeft === 0 && isRunning) {
       setIsRunning(false);
       if (!isBreak) {
         setCompletedPomodoros(prev => prev + 1);
+        if (selectedTaskId) {
+          applyTimeToTask(selectedTaskId, selectedDuration);
+        }
       }
-      playNotification();
+      playSound('timeUp');
     }
     return () => clearInterval(interval);
-  }, [isRunning, timeLeft, isBreak]);
-
-  const playNotification = () => {
-    if (audioRef.current) {
-      audioRef.current.play().catch(e => console.log('Audio play failed:', e));
-    }
-  };
+  }, [isRunning, timeLeft, isBreak, selectedDuration, selectedTaskId]);
 
   const addTask = () => {
-    if (newTaskName.trim() && tasks.length < 10) {
+    const estimateValue = Number(newTaskEstimate);
+    const isEstimateValid = Number.isFinite(estimateValue)
+      && estimateValue >= MIN_ESTIMATE_MINUTES
+      && estimateValue <= MAX_ESTIMATE_MINUTES;
+    if (newTaskName.trim() && tasks.length < 10 && isEstimateValid) {
       const newTask = {
         id: Date.now(),
         name: newTaskName.trim(),
         completed: false,
-        timeSpent: 0
+        timeSpent: 0,
+        estimatedMinutes: Math.round(estimateValue),
       };
-      setTasks([...tasks, newTask]);
+      setTasks((prev) => [...prev, newTask]);
       setNewTaskName('');
+      setNewTaskEstimate(String(DEFAULT_ESTIMATE_MINUTES));
       setShowAddTask(false);
     }
   };
 
+  const startEditingTask = (task) => {
+    setEditingTaskId(task.id);
+    setEditingTaskName(task.name);
+    setEditingTaskEstimate(String(task.estimatedMinutes || DEFAULT_ESTIMATE_MINUTES));
+  };
+
+  const cancelEditing = () => {
+    setEditingTaskId(null);
+    setEditingTaskName('');
+    setEditingTaskEstimate(String(DEFAULT_ESTIMATE_MINUTES));
+  };
+
+  const saveTaskEdits = () => {
+    const estimateValue = Number(editingTaskEstimate);
+    const isEstimateValid = Number.isFinite(estimateValue)
+      && estimateValue >= MIN_ESTIMATE_MINUTES
+      && estimateValue <= MAX_ESTIMATE_MINUTES;
+    if (!editingTaskName.trim() || !isEstimateValid) return;
+    setTasks((prev) => prev.map((task) => {
+      if (task.id !== editingTaskId) return task;
+      return {
+        ...task,
+        name: editingTaskName.trim(),
+        estimatedMinutes: Math.round(estimateValue),
+      };
+    }));
+    cancelEditing();
+  };
+
   const deleteTask = (id) => {
-    setTasks(tasks.filter(task => task.id !== id));
-    if (selectedTask?.id === id) {
-      setSelectedTask(null);
+    setTasks((prev) => prev.filter(task => task.id !== id));
+    if (selectedTaskId === id) {
+      setSelectedTaskId(null);
+    }
+    if (editingTaskId === id) {
+      cancelEditing();
     }
   };
 
   const toggleTaskComplete = (id) => {
-    if (selectedTask?.id === id && isRunning) {
-      // Calculate time spent (time that has elapsed)
-      const timeSpent = (selectedDuration * 60) - timeLeft;
-      const minutesSpent = Math.ceil(timeSpent / 60); // Round up to nearest minute
-      
-      setTasks(tasks.map(task => 
-        task.id === id ? { 
-          ...task, 
-          completed: true, 
-          timeSpent: (task.timeSpent || 0) + minutesSpent 
-        } : task
-      ));
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const minutesSpent = (selectedTaskId === id && isRunning)
+      ? Math.ceil(((selectedDuration * 60) - timeLeft) / 60)
+      : 0;
+    const shouldComplete = (selectedTaskId === id && isRunning) ? true : !task.completed;
+    setTasks((prev) => prev.map((item) => {
+      if (item.id !== id) return item;
+      const nextTimeSpent = minutesSpent > 0
+        ? (item.timeSpent || 0) + minutesSpent
+        : (item.timeSpent || 0);
+      if (minutesSpent > 0) {
+        showOvertimeNotice(item, nextTimeSpent);
+      }
+      return {
+        ...item,
+        completed: shouldComplete,
+        timeSpent: nextTimeSpent,
+      };
+    }));
+    if (!task.completed && shouldComplete) {
+      triggerCelebration(id);
+      playSound('complete');
+    }
+    if (selectedTaskId === id) {
       setIsRunning(false);
-      setSelectedTask(null);
-    } else {
-      setTasks(tasks.map(task => 
-        task.id === id ? { ...task, completed: !task.completed } : task
-      ));
+      if (shouldComplete) {
+        setSelectedTaskId(null);
+      }
     }
   };
 
   const selectTask = (task) => {
-    setSelectedTask(task);
+    setSelectedTaskId(task.id);
     setIsBreak(false);
-    resetTimer(selectedDuration);
-    setSessionStartTime(Date.now());
+    resetTimer(selectedDuration, { task });
   };
 
   const startBreak = () => {
     setIsBreak(true);
-    setSelectedTask(null);
-    resetTimer(5);
+    setSelectedTaskId(null);
+    playSound('break');
+    resetTimer(5, { enforceLimit: false });
   };
 
-  const resetTimer = (minutes) => {
-    setTimeLeft(minutes * 60);
+  const resetTimer = (minutes, options = {}) => {
+    const { enforceLimit = true, task } = options;
+    const taskForLimit = task || selectedTask;
+    let nextMinutes = minutes;
+    if (enforceLimit && taskForLimit) {
+      const remaining = getRemainingMinutes(taskForLimit);
+      if (remaining <= 0) {
+        nextMinutes = 0;
+      } else if (minutes > remaining) {
+        const allowed = DURATION_OPTIONS.filter((duration) => duration <= remaining);
+        nextMinutes = allowed.length > 0 ? Math.max(...allowed) : remaining;
+      }
+    }
+    setTimeLeft(nextMinutes * 60);
     setIsRunning(false);
-    setSelectedDuration(minutes);
+    setSelectedDuration(nextMinutes);
   };
 
   const toggleTimer = () => {
-    if (!isRunning && !sessionStartTime) {
-      setSessionStartTime(Date.now());
+    if (timeLeft === 0) return;
+    if (!isRunning) {
+      playSound('start');
     }
-    setIsRunning(!isRunning);
+    setIsRunning((prev) => !prev);
   };
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatHoursMinutes = (totalMinutes) => {
+    const safeMinutes = Number(totalMinutes) || 0;
+    const hours = Math.floor(safeMinutes / 60);
+    const minutes = safeMinutes % 60;
+    if (hours === 0) return `${minutes}m`;
+    if (minutes === 0) return `${hours}h`;
+    return `${hours}h ${minutes}m`;
+  };
+
+  const getFocusMessage = (totalMinutes) => {
+    const hours = Math.floor((Number(totalMinutes) || 0) / 60);
+    if (hours >= 5) {
+      return {
+        headline: "You've focused 5+ hours today",
+        sub: "Very productive day so far.",
+      };
+    }
+    if (hours >= 4) {
+      return {
+        headline: "You've focused 4+ hours today",
+        sub: "Keep going — you're doing great.",
+      };
+    }
+    if (hours >= 3) {
+      return {
+        headline: "You've focused 3+ hours today",
+        sub: "Keep going — you're doing good.",
+      };
+    }
+    if (hours >= 2) {
+      return {
+        headline: "You've focused 2+ hours today",
+        sub: "Nice pace — keep it up.",
+      };
+    }
+    if (hours >= 1) {
+      return {
+        headline: "You've focused 1+ hour today",
+        sub: "Great start — keep going.",
+      };
+    }
+    return {
+      headline: "You're building momentum",
+      sub: "Keep going — you're doing good.",
+    };
   };
 
   const saveRoutine = () => {
@@ -384,14 +620,30 @@ const App = () => {
     return <LandingPage onGetStarted={handleGetStarted} />;
   }
 
-  const durations = [10, 30, 45];
+  const remainingMinutes = selectedTask ? getRemainingMinutes(selectedTask) : 0;
+  const minDuration = Math.min(...DURATION_OPTIONS);
+  const durationOptions = (remainingMinutes > 0 && remainingMinutes < minDuration)
+    ? [remainingMinutes, ...DURATION_OPTIONS]
+    : DURATION_OPTIONS;
+  const canStartTimer = (isBreak || (selectedTask && remainingMinutes > 0)) && timeLeft > 0;
+  const newEstimateValue = Number(newTaskEstimate);
+  const isNewEstimateValid = Number.isFinite(newEstimateValue)
+    && newEstimateValue >= MIN_ESTIMATE_MINUTES
+    && newEstimateValue <= MAX_ESTIMATE_MINUTES;
+  const canAddTask = Boolean(newTaskName.trim()) && isNewEstimateValid;
+  const editingEstimateValue = Number(editingTaskEstimate);
+  const isEditingEstimateValid = Number.isFinite(editingEstimateValue)
+    && editingEstimateValue >= MIN_ESTIMATE_MINUTES
+    && editingEstimateValue <= MAX_ESTIMATE_MINUTES;
+  const canSaveEdit = Boolean(editingTaskName.trim()) && isEditingEstimateValid;
+  const totalFocusMinutes = tasks.reduce((sum, task) => sum + (task.timeSpent || 0), 0);
+  const completedTasksCount = tasks.filter(task => task.completed).length;
+  const focusMessage = getFocusMessage(totalFocusMinutes);
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
       darkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'
     }`}>
-      <audio ref={audioRef} src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBzGH0fPTgjMGHm7A7+OZVRE=" />
-      
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -411,11 +663,6 @@ const App = () => {
               <Calendar className="w-4 h-4" />
               Today's Routine
             </button>
-            <div className={`px-4 py-2 rounded-lg ${
-              darkMode ? 'bg-gray-800' : 'bg-gray-100'
-            }`}>
-              <span className="text-sm font-medium">{completedPomodoros} sessions today</span>
-            </div>
             <button
               onClick={() => setDarkMode(!darkMode)}
               className={`p-3 rounded-full transition-colors ${
@@ -438,7 +685,19 @@ const App = () => {
                 <h2 className="text-2xl font-semibold">Break Time</h2>
               </div>
             ) : selectedTask ? (
-              <h2 className="text-2xl font-semibold mb-2">{selectedTask.name}</h2>
+              <>
+                <h2 className="text-2xl font-semibold mb-2">{selectedTask.name}</h2>
+                {remainingMinutes === 0 ? (
+                  <div className="inline-flex items-center gap-2 text-sm text-red-500">
+                    <AlertTriangle className="w-4 h-4" />
+                    Estimated time used up. Update the estimate to continue.
+                  </div>
+                ) : (
+                  <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {formatHoursMinutes(remainingMinutes)} remaining of {formatHoursMinutes(selectedTask.estimatedMinutes || 0)}
+                  </div>
+                )}
+              </>
             ) : (
               <h2 className="text-2xl font-semibold mb-2">Select a task to focus</h2>
             )}
@@ -450,11 +709,15 @@ const App = () => {
 
           {/* Duration Selector */}
           <div className="flex gap-2 justify-center mb-6 flex-wrap">
-            {durations.map(duration => (
+            {durationOptions.map(duration => {
+              const isDurationDisabled = isRunning
+                || (!isBreak && selectedTask && duration > remainingMinutes)
+                || (!isBreak && selectedTask && remainingMinutes === 0);
+              return (
               <button
                 key={duration}
                 onClick={() => resetTimer(duration)}
-                disabled={isRunning}
+                disabled={isDurationDisabled}
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${
                   selectedDuration === duration
                     ? darkMode
@@ -463,20 +726,21 @@ const App = () => {
                     : darkMode
                       ? 'bg-gray-700 hover:bg-gray-600'
                       : 'bg-gray-200 hover:bg-gray-300'
-                } ${isRunning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                } ${isDurationDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {duration}m
               </button>
-            ))}
+              );
+            })}
           </div>
 
           {/* Timer Controls */}
           <div className="flex gap-4 justify-center">
             <button
               onClick={toggleTimer}
-              disabled={!selectedTask && !isBreak}
+              disabled={!canStartTimer && !isRunning}
               className={`flex items-center gap-2 px-8 py-4 rounded-xl font-semibold transition-all ${
-                !selectedTask && !isBreak
+                (!canStartTimer && !isRunning)
                   ? 'opacity-50 cursor-not-allowed bg-gray-400'
                   : darkMode
                     ? 'bg-blue-600 hover:bg-blue-700 text-white'
@@ -544,48 +808,83 @@ const App = () => {
             )}
           </div>
 
+          {overtimeNotice && (
+            <div className={`mb-4 flex items-center gap-3 rounded-lg border px-4 py-3 text-sm ${
+              darkMode
+                ? 'border-red-500/30 bg-red-500/10 text-red-200'
+                : 'border-red-200 bg-red-50 text-red-600'
+            }`}>
+              <AlertTriangle className="w-4 h-4" />
+              <span>
+                {overtimeNotice.name} is taking longer than expected by {formatHoursMinutes(overtimeNotice.overBy)}.
+              </span>
+            </div>
+          )}
+
           {showAddTask && (
-            <div className="mb-4 flex gap-2">
-              <input
-                type="text"
-                value={newTaskName}
-                onChange={(e) => setNewTaskName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addTask()}
-                placeholder="Enter task name..."
-                maxLength={50}
-                autoFocus
-                className={`flex-1 px-4 py-3 rounded-lg border-2 focus:outline-none transition-colors ${
-                  darkMode
-                    ? 'bg-gray-700 border-gray-600 focus:border-blue-500'
-                    : 'bg-white border-gray-200 focus:border-blue-500'
-                }`}
-              />
-              <button
-                onClick={addTask}
-                disabled={!newTaskName.trim()}
-                className={`px-6 py-3 rounded-lg font-medium transition-all ${
-                  newTaskName.trim()
-                    ? darkMode
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                      : 'bg-blue-500 hover:bg-blue-600 text-white'
-                    : 'bg-gray-400 cursor-not-allowed text-gray-200'
-                }`}
-              >
-                Add
-              </button>
-              <button
-                onClick={() => {
-                  setShowAddTask(false);
-                  setNewTaskName('');
-                }}
-                className={`px-4 py-3 rounded-lg transition-all ${
-                  darkMode
-                    ? 'bg-gray-700 hover:bg-gray-600'
-                    : 'bg-gray-200 hover:bg-gray-300'
-                }`}
-              >
-                Cancel
-              </button>
+            <div className="mb-4 grid gap-3">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                <input
+                  type="text"
+                  value={newTaskName}
+                  onChange={(e) => setNewTaskName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && canAddTask && addTask()}
+                  placeholder="Enter task name..."
+                  maxLength={TASK_NAME_MAX}
+                  autoFocus
+                  className={`flex-1 px-4 py-3 rounded-lg border-2 focus:outline-none transition-colors ${
+                    darkMode
+                      ? 'bg-gray-700 border-gray-600 focus:border-blue-500'
+                      : 'bg-white border-gray-200 focus:border-blue-500'
+                  }`}
+                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={MIN_ESTIMATE_MINUTES}
+                    max={MAX_ESTIMATE_MINUTES}
+                    step="5"
+                    value={newTaskEstimate}
+                    onChange={(e) => setNewTaskEstimate(e.target.value)}
+                    placeholder="Est. min"
+                    className={`w-32 px-3 py-3 rounded-lg border-2 focus:outline-none transition-colors ${
+                      darkMode
+                        ? 'bg-gray-700 border-gray-600 focus:border-blue-500'
+                        : 'bg-white border-gray-200 focus:border-blue-500'
+                    }`}
+                  />
+                  <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>min</span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={addTask}
+                  disabled={!canAddTask}
+                  className={`px-6 py-3 rounded-lg font-medium transition-all ${
+                    canAddTask
+                      ? darkMode
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-blue-500 hover:bg-blue-600 text-white'
+                      : 'bg-gray-400 cursor-not-allowed text-gray-200'
+                  }`}
+                >
+                  Add
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAddTask(false);
+                    setNewTaskName('');
+                    setNewTaskEstimate(String(DEFAULT_ESTIMATE_MINUTES));
+                  }}
+                  className={`px-4 py-3 rounded-lg transition-all ${
+                    darkMode
+                      ? 'bg-gray-700 hover:bg-gray-600'
+                      : 'bg-gray-200 hover:bg-gray-300'
+                  }`}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           )}
 
@@ -595,58 +894,165 @@ const App = () => {
                 No tasks yet. Add your first task to get started!
               </p>
             ) : (
-              tasks.map(task => (
-                <div
-                  key={task.id}
-                  className={`flex items-center gap-3 p-4 rounded-xl transition-all cursor-pointer ${
-                    selectedTask?.id === task.id
-                      ? darkMode
-                        ? 'bg-blue-900 border-2 border-blue-500'
-                        : 'bg-blue-50 border-2 border-blue-500'
-                      : darkMode
-                        ? 'bg-gray-700 hover:bg-gray-650'
-                        : 'bg-white hover:bg-gray-50'
-                  }`}
-                  onClick={() => !task.completed && selectTask(task)}
-                >
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleTaskComplete(task.id);
-                    }}
-                    className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                      task.completed
-                        ? 'bg-green-500 border-green-500'
+              tasks.map(task => {
+                const isEditing = editingTaskId === task.id;
+                const spentMinutes = task.timeSpent || 0;
+                const estimateMinutes = task.estimatedMinutes || 0;
+                const overBy = Math.max(spentMinutes - estimateMinutes, 0);
+                return (
+                  <div
+                    key={task.id}
+                    className={`relative flex items-center gap-3 p-4 rounded-xl transition-all ${
+                      isEditing ? 'cursor-default' : 'cursor-pointer'
+                    } ${
+                      selectedTaskId === task.id
+                        ? darkMode
+                          ? 'bg-blue-900 border-2 border-blue-500'
+                          : 'bg-blue-50 border-2 border-blue-500'
                         : darkMode
-                          ? 'border-gray-500 hover:border-gray-400'
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'bg-gray-700 hover:bg-gray-650'
+                          : 'bg-white hover:bg-gray-50'
                     }`}
+                    onClick={() => !task.completed && !isEditing && selectTask(task)}
                   >
-                    {task.completed && <Check className="w-4 h-4 text-white" />}
-                  </button>
-                  <span className={`flex-1 font-medium ${task.completed ? 'line-through opacity-50' : ''}`}>
-                    {task.name}
-                    {task.timeSpent > 0 && (
-                      <span className={`ml-2 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        ({task.timeSpent}m)
-                      </span>
+                    {celebratingTaskId === task.id && (
+                      <div className="confetti-burst pointer-events-none">
+                        {CONFETTI_PIECES.map((piece, index) => (
+                          <span
+                            key={index}
+                            className="confetti-piece"
+                            style={{
+                              '--x': piece.x,
+                              '--y': piece.y,
+                              '--r': piece.r,
+                              backgroundColor: piece.color,
+                            }}
+                          />
+                        ))}
+                      </div>
                     )}
-                  </span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteTask(task.id);
-                    }}
-                    className={`flex-shrink-0 p-2 rounded-lg transition-all ${
-                      darkMode
-                        ? 'hover:bg-gray-600 text-gray-400 hover:text-red-400'
-                        : 'hover:bg-gray-100 text-gray-400 hover:text-red-500'
-                    }`}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))
+                    {isEditing ? (
+                      <div className="flex flex-1 flex-col gap-3">
+                        <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                          <input
+                            type="text"
+                            value={editingTaskName}
+                            onChange={(e) => setEditingTaskName(e.target.value)}
+                            maxLength={TASK_NAME_MAX}
+                            className={`flex-1 px-3 py-2 rounded-lg border-2 focus:outline-none transition-colors ${
+                              darkMode
+                                ? 'bg-gray-700 border-gray-600 focus:border-blue-500'
+                                : 'bg-white border-gray-200 focus:border-blue-500'
+                            }`}
+                          />
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min={MIN_ESTIMATE_MINUTES}
+                              max={MAX_ESTIMATE_MINUTES}
+                              step="5"
+                              value={editingTaskEstimate}
+                              onChange={(e) => setEditingTaskEstimate(e.target.value)}
+                              className={`w-28 px-3 py-2 rounded-lg border-2 focus:outline-none transition-colors ${
+                                darkMode
+                                  ? 'bg-gray-700 border-gray-600 focus:border-blue-500'
+                                  : 'bg-white border-gray-200 focus:border-blue-500'
+                              }`}
+                            />
+                            <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>min</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={saveTaskEdits}
+                            disabled={!canSaveEdit}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                              canSaveEdit
+                                ? darkMode
+                                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+                                : 'bg-gray-400 cursor-not-allowed text-gray-200'
+                            }`}
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={cancelEditing}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                              darkMode
+                                ? 'bg-gray-700 hover:bg-gray-600'
+                                : 'bg-gray-200 hover:bg-gray-300'
+                            }`}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleTaskComplete(task.id);
+                          }}
+                          className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                            task.completed
+                              ? 'bg-green-500 border-green-500'
+                              : darkMode
+                                ? 'border-gray-500 hover:border-gray-400'
+                                : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          {task.completed && <Check className="w-4 h-4 text-white" />}
+                        </button>
+                        <div className="flex-1">
+                          <div className={`font-medium ${task.completed ? 'line-through opacity-50' : ''}`}>
+                            {task.name}
+                          </div>
+                          <div className={`text-xs ${task.completed ? 'opacity-60' : ''} ${
+                            darkMode ? 'text-gray-400' : 'text-gray-500'
+                          }`}>
+                            Est {formatHoursMinutes(estimateMinutes)} | Spent {formatHoursMinutes(spentMinutes)}
+                            {overBy > 0 && (
+                              <span className={`font-semibold ${darkMode ? 'text-red-300' : 'text-red-500'}`}>
+                                {' '}| Over {formatHoursMinutes(overBy)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startEditingTask(task);
+                          }}
+                          className={`flex-shrink-0 p-2 rounded-lg transition-all ${
+                            darkMode
+                              ? 'hover:bg-gray-600 text-gray-400 hover:text-blue-300'
+                              : 'hover:bg-gray-100 text-gray-400 hover:text-blue-500'
+                          }`}
+                          aria-label="Edit task"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteTask(task.id);
+                          }}
+                          className={`flex-shrink-0 p-2 rounded-lg transition-all ${
+                            darkMode
+                              ? 'hover:bg-gray-600 text-gray-400 hover:text-red-400'
+                              : 'hover:bg-gray-100 text-gray-400 hover:text-red-500'
+                          }`}
+                          aria-label="Delete task"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
@@ -659,18 +1065,18 @@ const App = () => {
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
               <Clock className={`w-8 h-8 mx-auto mb-2 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-              <div className="text-2xl font-bold">{completedPomodoros * 25}m</div>
+              <div className="text-2xl font-bold">{formatHoursMinutes(totalFocusMinutes)}</div>
               <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Focus Time</div>
             </div>
             <div className="text-center">
               <CheckCircle2 className={`w-8 h-8 mx-auto mb-2 ${darkMode ? 'text-green-400' : 'text-green-600'}`} />
-              <div className="text-2xl font-bold">{tasks.filter(t => t.completed).length}/{tasks.length}</div>
+              <div className="text-2xl font-bold">{completedTasksCount}/{tasks.length}</div>
               <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Completed</div>
             </div>
             <div className="text-center">
               <Target className={`w-8 h-8 mx-auto mb-2 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-              <div className="text-2xl font-bold">🔥 {Math.min(completedPomodoros, 7)}</div>
-              <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Day Streak</div>
+              <div className="text-base font-semibold">{focusMessage.headline}</div>
+              <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{focusMessage.sub}</div>
             </div>
           </div>
         </div>
