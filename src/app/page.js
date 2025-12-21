@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Plus, X, Check, Coffee, Moon, Sun, Timer, Clock, Target, CheckCircle2, ChevronRight, Star, Calendar, Pencil, AlertTriangle } from 'lucide-react';
+import { Play, Pause, RotateCcw, Plus, X, Check, Coffee, Clock, CheckCircle2, Pencil, AlertTriangle } from 'lucide-react';
+import AppHeader from './components/AppHeader';
+import RoutineModal from './components/RoutineModal';
 
 const TASK_NAME_MAX = 120;
 const DEFAULT_ESTIMATE_MINUTES = 30;
@@ -40,232 +42,7 @@ const SOUND_PATTERNS = {
   ],
 };
 
-const LandingPage = ({ onGetStarted }) => {
-  const features = [
-    {
-      icon: <Timer className="w-6 h-6" />,
-      title: "Smart Focus Timer",
-      description: "Pomodoro technique with customizable durations to match your workflow"
-    },
-    {
-      icon: <Target className="w-6 h-6" />,
-      title: "Task Management",
-      description: "Add up to 10 tasks and track your progress throughout the day"
-    },
-    {
-      icon: <Coffee className="w-6 h-6" />,
-      title: "Smart Breaks",
-      description: "Never miss a break with intelligent 5-minute break reminders"
-    }
-  ];
-
-  const testimonials = [
-    {
-      name: "Sarah Chen",
-      role: "Product Designer",
-      content: "FocusNow helped me increase my productivity by 40%. Simple and effective!",
-      rating: 5
-    },
-    {
-      name: "Michael Roberts",
-      role: "Software Engineer",
-      content: "Best focus app I've used. Clean interface and actually helps me focus.",
-      rating: 5
-    },
-    {
-      name: "Emma Thompson",
-      role: "Content Writer",
-      content: "I love how simple it is. No distractions, just pure productivity.",
-      rating: 5
-    }
-  ];
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Navigation */}
-      <nav className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Timer className="w-8 h-8 text-blue-600" />
-            <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">FocusNow</span>
-          </div>
-          <button
-            onClick={onGetStarted}
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all hover:scale-105"
-          >
-            Try For Free
-          </button>
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <section className="max-w-7xl mx-auto px-4 py-20 text-center">
-        <div className="inline-block mb-4 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
-          🚀 Free Forever • No Sign Up Required
-        </div>
-        <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-          Master Your Focus.<br />Achieve More.
-        </h1>
-        <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-          The ultimate productivity companion that helps you focus, track progress, and build lasting habits. Science-backed techniques meet beautiful design.
-        </p>
-        <button
-          onClick={onGetStarted}
-          className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold rounded-xl transition-all hover:scale-105 shadow-lg hover:shadow-xl inline-flex items-center gap-2"
-        >
-          Try For Free <ChevronRight className="w-5 h-5" />
-        </button>
-        <p className="text-sm text-gray-500 mt-4">Free forever • Start focusing in seconds</p>
-
-        {/* Hero Image Placeholder */}
-        <div className="mt-16 rounded-2xl bg-gradient-to-br from-blue-100 to-purple-100 p-8 shadow-2xl">
-          <div className="bg-white rounded-xl p-8 text-left">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-                <Timer className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">Complete Project Proposal</h3>
-                <p className="text-sm text-gray-500">25:00 remaining</p>
-              </div>
-            </div>
-            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div className="h-full w-3/4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full"></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="bg-white py-20">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Everything You Need to Stay Focused</h2>
-            <p className="text-xl text-gray-600">Powerful features designed for peak productivity</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
-              <div key={index} className="p-6 rounded-xl border-2 border-gray-100 hover:border-blue-200 hover:shadow-lg transition-all">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 mb-4">
-                  {feature.icon}
-                </div>
-                <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-                <p className="text-gray-600">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-8 text-center">
-            <div>
-              <div className="text-5xl font-bold mb-2">50K+</div>
-              <div className="text-blue-100">Active Users</div>
-            </div>
-            <div>
-              <div className="text-5xl font-bold mb-2">2M+</div>
-              <div className="text-blue-100">Focus Sessions</div>
-            </div>
-            <div>
-              <div className="text-5xl font-bold mb-2">40%</div>
-              <div className="text-blue-100">Productivity Boost</div>
-            </div>
-            <div>
-              <div className="text-5xl font-bold mb-2">4.9★</div>
-              <div className="text-blue-100">User Rating</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-20">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Loved by Professionals</h2>
-            <p className="text-xl text-gray-600">See what our users are saying</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <div key={index} className="p-6 rounded-xl bg-white border-2 border-gray-100 shadow-lg">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-gray-700 mb-4">"{testimonial.content}"</p>
-                <div>
-                  <div className="font-semibold">{testimonial.name}</div>
-                  <div className="text-sm text-gray-500">{testimonial.role}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-br from-blue-50 to-purple-50">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-5xl font-bold mb-6">Ready to Transform Your Productivity?</h2>
-          <p className="text-xl text-gray-600 mb-8">Join thousands of professionals who've mastered their focus</p>
-          <button
-            onClick={onGetStarted}
-            className="px-10 py-5 bg-blue-600 hover:bg-blue-700 text-white text-xl font-semibold rounded-xl transition-all hover:scale-105 shadow-lg hover:shadow-xl inline-flex items-center gap-2"
-          >
-            Try For Free <ChevronRight className="w-6 h-6" />
-          </button>
-          <p className="text-sm text-gray-500 mt-4">Free forever • No credit card required</p>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Timer className="w-6 h-6" />
-                <span className="text-xl font-bold">FocusNow</span>
-              </div>
-              <p className="text-gray-400">Master your focus. Achieve more.</p>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Product</h4>
-              <div className="space-y-2 text-gray-400">
-                <div>Features</div>
-                <div>How it Works</div>
-              </div>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Company</h4>
-              <div className="space-y-2 text-gray-400">
-                <div>About</div>
-                <div>Blog</div>
-              </div>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Support</h4>
-              <div className="space-y-2 text-gray-400">
-                <div>Help Center</div>
-                <div>Contact</div>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
-            <p>&copy; 2025 FocusNow. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
-    </div>
-  );
-};
-
 const App = () => {
-  const [showApp, setShowApp] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [timeLeft, setTimeLeft] = useState(25 * 60);
@@ -295,7 +72,6 @@ const App = () => {
     const savedDarkMode = localStorage.getItem('focusnow-darkmode');
     const savedPomodoros = localStorage.getItem('focusnow-pomodoros');
     const savedRoutine = localStorage.getItem('focusnow-routine');
-    const hasSeenLanding = localStorage.getItem('focusnow-seen-landing');
     
     if (savedTasks) {
       const parsedTasks = JSON.parse(savedTasks);
@@ -311,7 +87,6 @@ const App = () => {
     if (savedDarkMode) setDarkMode(JSON.parse(savedDarkMode));
     if (savedPomodoros) setCompletedPomodoros(JSON.parse(savedPomodoros));
     if (savedRoutine) setRoutine(savedRoutine);
-    if (hasSeenLanding) setShowApp(true);
   }, []);
 
   useEffect(() => {
@@ -569,56 +344,9 @@ const App = () => {
     return `${hours}h ${minutes}m`;
   };
 
-  const getFocusMessage = (totalMinutes) => {
-    const hours = Math.floor((Number(totalMinutes) || 0) / 60);
-    if (hours >= 5) {
-      return {
-        headline: "You've focused 5+ hours today",
-        sub: "Very productive day so far.",
-      };
-    }
-    if (hours >= 4) {
-      return {
-        headline: "You've focused 4+ hours today",
-        sub: "Keep going — you're doing great.",
-      };
-    }
-    if (hours >= 3) {
-      return {
-        headline: "You've focused 3+ hours today",
-        sub: "Keep going — you're doing good.",
-      };
-    }
-    if (hours >= 2) {
-      return {
-        headline: "You've focused 2+ hours today",
-        sub: "Nice pace — keep it up.",
-      };
-    }
-    if (hours >= 1) {
-      return {
-        headline: "You've focused 1+ hour today",
-        sub: "Great start — keep going.",
-      };
-    }
-    return {
-      headline: "You're building momentum",
-      sub: "Keep going — you're doing good.",
-    };
-  };
-
   const saveRoutine = () => {
     setShowRoutineModal(false);
   };
-
-  const handleGetStarted = () => {
-    setShowApp(true);
-    localStorage.setItem('focusnow-seen-landing', 'true');
-  };
-
-  if (!showApp) {
-    return <LandingPage onGetStarted={handleGetStarted} />;
-  }
 
   const remainingMinutes = selectedTask ? getRemainingMinutes(selectedTask) : 0;
   const minDuration = Math.min(...DURATION_OPTIONS);
@@ -638,44 +366,20 @@ const App = () => {
   const canSaveEdit = Boolean(editingTaskName.trim()) && isEditingEstimateValid;
   const totalFocusMinutes = tasks.reduce((sum, task) => sum + (task.timeSpent || 0), 0);
   const completedTasksCount = tasks.filter(task => task.completed).length;
-  const focusMessage = getFocusMessage(totalFocusMinutes);
+  const currentYear = new Date().getFullYear();
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
       darkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'
     }`}>
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <Timer className="w-8 h-8 text-blue-600" />
-            <h1 className="text-3xl font-bold">FocusNow</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setShowRoutineModal(true)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-                darkMode
-                  ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                  : 'bg-purple-500 hover:bg-purple-600 text-white'
-              }`}
-            >
-              <Calendar className="w-4 h-4" />
-              Today's Routine
-            </button>
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className={`p-3 rounded-full transition-colors ${
-                darkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-100 hover:bg-gray-200'
-              }`}
-            >
-              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
-          </div>
-        </div>
-
+      <AppHeader
+        darkMode={darkMode}
+        onToggleDarkMode={() => setDarkMode(!darkMode)}
+        onOpenRoutine={() => setShowRoutineModal(true)}
+      />
+      <div className="w-[90%] mx-auto py-8">
         {/* Timer Section */}
-        <div className={`rounded-3xl p-8 mb-8 ${
+        <div className={`rounded-3xl p-6 sm:p-8 mb-8 ${
           darkMode ? 'bg-gray-800' : 'bg-gray-50'
         }`}>
           <div className="text-center mb-6">
@@ -703,7 +407,7 @@ const App = () => {
             )}
           </div>
 
-          <div className="text-7xl font-bold text-center mb-8 font-mono">
+          <div className="text-5xl sm:text-7xl font-bold text-center mb-8 font-mono">
             {formatTime(timeLeft)}
           </div>
 
@@ -735,11 +439,11 @@ const App = () => {
           </div>
 
           {/* Timer Controls */}
-          <div className="flex gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
             <button
               onClick={toggleTimer}
               disabled={!canStartTimer && !isRunning}
-              className={`flex items-center gap-2 px-8 py-4 rounded-xl font-semibold transition-all ${
+              className={`flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-semibold transition-all w-full sm:w-auto ${
                 (!canStartTimer && !isRunning)
                   ? 'opacity-50 cursor-not-allowed bg-gray-400'
                   : darkMode
@@ -752,7 +456,7 @@ const App = () => {
             </button>
             <button
               onClick={() => resetTimer(selectedDuration)}
-              className={`p-4 rounded-xl transition-all ${
+              className={`p-4 rounded-xl transition-all w-full sm:w-auto ${
                 darkMode
                   ? 'bg-gray-700 hover:bg-gray-600'
                   : 'bg-gray-200 hover:bg-gray-300'
@@ -762,7 +466,7 @@ const App = () => {
             </button>
             <button
               onClick={startBreak}
-              className={`flex items-center gap-2 px-6 py-4 rounded-xl font-semibold transition-all ${
+              className={`flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-semibold transition-all w-full sm:w-auto ${
                 darkMode
                   ? 'bg-green-700 hover:bg-green-600 text-white'
                   : 'bg-green-500 hover:bg-green-600 text-white'
@@ -774,7 +478,7 @@ const App = () => {
             {selectedTask && isRunning && (
               <button
                 onClick={() => toggleTaskComplete(selectedTask.id)}
-                className={`flex items-center gap-2 px-6 py-4 rounded-xl font-semibold transition-all ${
+                className={`flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-semibold transition-all w-full sm:w-auto ${
                   darkMode
                     ? 'bg-purple-700 hover:bg-purple-600 text-white'
                     : 'bg-purple-500 hover:bg-purple-600 text-white'
@@ -788,10 +492,10 @@ const App = () => {
         </div>
 
         {/* Tasks Section */}
-        <div className={`rounded-3xl p-6 mb-8 ${
+        <div className={`rounded-3xl p-5 sm:p-6 mb-8 ${
           darkMode ? 'bg-gray-800' : 'bg-gray-50'
         }`}>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
             <h3 className="text-xl font-semibold">Your Tasks ({tasks.length}/10)</h3>
             {!showAddTask && tasks.length < 10 && (
               <button
@@ -1006,9 +710,13 @@ const App = () => {
                           {task.completed && <Check className="w-4 h-4 text-white" />}
                         </button>
                         <div className="flex-1">
-                          <div className={`font-medium ${task.completed ? 'line-through opacity-50' : ''}`}>
-                            {task.name}
-                          </div>
+                        <div className={`font-medium ${
+                          task.completed
+                            ? (darkMode ? 'text-gray-300' : 'text-gray-600')
+                            : ''
+                        }`}>
+                          {task.name}
+                        </div>
                           <div className={`text-xs ${task.completed ? 'opacity-60' : ''} ${
                             darkMode ? 'text-gray-400' : 'text-gray-500'
                           }`}>
@@ -1058,11 +766,11 @@ const App = () => {
         </div>
 
         {/* Today's Progress */}
-        <div className={`rounded-3xl p-6 ${
+        <div className={`rounded-3xl p-5 sm:p-6 ${
           darkMode ? 'bg-gray-800' : 'bg-gray-50'
         }`}>
           <h3 className="text-xl font-semibold mb-4">Today's Progress</h3>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="text-center">
               <Clock className={`w-8 h-8 mx-auto mb-2 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
               <div className="text-2xl font-bold">{formatHoursMinutes(totalFocusMinutes)}</div>
@@ -1073,86 +781,33 @@ const App = () => {
               <div className="text-2xl font-bold">{completedTasksCount}/{tasks.length}</div>
               <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Completed</div>
             </div>
-            <div className="text-center">
-              <Target className={`w-8 h-8 mx-auto mb-2 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-              <div className="text-base font-semibold">{focusMessage.headline}</div>
-              <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{focusMessage.sub}</div>
-            </div>
           </div>
         </div>
 
         {/* Footer */}
         <div className="text-center mt-8">
           <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-            Stay focused. One task at a time. 🎯
+            &copy; {currentYear} FocusNow. Powered by{" "}
+            <a
+              href="https://somydigital.com"
+              target="_blank"
+              rel="noreferrer"
+              className={`${darkMode ? 'text-blue-300 hover:text-blue-200' : 'text-blue-600 hover:text-blue-700'}`}
+            >
+              Somy Digital
+            </a>.
           </p>
         </div>
       </div>
 
-      {/* Routine Modal */}
-      {showRoutineModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className={`rounded-2xl p-8 max-w-2xl w-full max-h-[80vh] overflow-y-auto ${
-            darkMode ? 'bg-gray-800' : 'bg-white'
-          }`}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Today's Routine</h2>
-              <button
-                onClick={() => setShowRoutineModal(false)}
-                className={`p-2 rounded-lg transition-colors ${
-                  darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-                }`}
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <p className={`mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Plan your day to stay organized and focused. Add your daily routine, goals, and priorities.
-            </p>
-            <textarea
-              value={routine}
-              onChange={(e) => setRoutine(e.target.value)}
-              placeholder="Example:
-• 6:00 AM - Morning workout
-• 7:00 AM - Breakfast & planning
-• 8:00 AM - Deep work session
-• 10:00 AM - Team meeting
-• 12:00 PM - Lunch break
-• 1:00 PM - Project work
-• 3:00 PM - Emails & admin
-• 5:00 PM - Review & wrap up"
-              rows={12}
-              className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none transition-colors resize-none ${
-                darkMode
-                  ? 'bg-gray-700 border-gray-600 focus:border-blue-500 text-white placeholder-gray-400'
-                  : 'bg-gray-50 border-gray-200 focus:border-blue-500 placeholder-gray-400'
-              }`}
-            />
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={saveRoutine}
-                className={`flex-1 py-3 rounded-xl font-semibold transition-all ${
-                  darkMode
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                    : 'bg-blue-500 hover:bg-blue-600 text-white'
-                }`}
-              >
-                Save Routine
-              </button>
-              <button
-                onClick={() => setShowRoutineModal(false)}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-                  darkMode
-                    ? 'bg-gray-700 hover:bg-gray-600'
-                    : 'bg-gray-200 hover:bg-gray-300'
-                }`}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <RoutineModal
+        open={showRoutineModal}
+        routine={routine}
+        onChange={setRoutine}
+        onClose={() => setShowRoutineModal(false)}
+        onSave={saveRoutine}
+        darkMode={darkMode}
+      />
     </div>
   );
 };
