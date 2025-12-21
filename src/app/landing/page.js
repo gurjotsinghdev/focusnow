@@ -25,7 +25,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white text-gray-900">
       <header className="border-b">
-        <div className="w-[90%] mx-auto py-6 flex items-center justify-between">
+        <div className="w-[90%] max-w-[1000px] mx-auto py-6 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <img src="/focusnow-mark.svg" alt="FocusNow logo" className="w-9 h-9" />
             <span className="text-2xl font-bold text-blue-600">FocusNow</span>
@@ -40,7 +40,7 @@ export default function LandingPage() {
       </header>
 
       <main>
-        <section className="w-[90%] mx-auto py-16 sm:py-24 text-center">
+        <section className="w-[90%] max-w-[1000px] mx-auto py-16 sm:py-24 text-center">
           <p className="text-sm uppercase tracking-wide text-blue-600 font-semibold">Focus. Finish. Repeat.</p>
           <h1 className="text-4xl sm:text-5xl font-bold mt-4">
             A calmer way to stay focused every day.
@@ -65,7 +65,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="w-[90%] mx-auto pb-20">
+        <section className="w-[90%] max-w-[1000px] mx-auto pb-20">
           <div className="grid gap-6 sm:grid-cols-3">
             {FEATURES.map((feature) => (
               <div key={feature.title} className="border border-gray-200 rounded-2xl p-6">
@@ -80,7 +80,7 @@ export default function LandingPage() {
         </section>
 
         <section className="bg-blue-50">
-          <div className="w-[90%] mx-auto py-14 sm:py-16 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="w-[90%] max-w-[1000px] mx-auto py-14 sm:py-16 flex flex-col sm:flex-row items-center justify-between gap-6">
             <div>
               <h2 className="text-2xl font-bold">Ready to focus with clarity?</h2>
               <p className="text-gray-600 mt-2">Jump in and start your first session in seconds.</p>
@@ -96,7 +96,7 @@ export default function LandingPage() {
       </main>
 
       <footer className="border-t">
-        <div className="w-[90%] mx-auto py-8 text-sm text-gray-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="w-[90%] max-w-[1000px] mx-auto py-8 text-sm text-gray-500 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>&copy; {currentYear} FocusNow</span>
           <a
             href="https://somydigital.com"

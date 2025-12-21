@@ -143,8 +143,8 @@ export default function WritePage() {
           onOpenRoutine={() => setShowRoutineModal(true)}
         />
       )}
-      <div className={isZenMode ? "fixed inset-0 z-40" : "w-[90%] mx-auto py-8"}>
-        <div className={`${isZenMode ? "w-full h-full p-4 sm:p-8 border-2 rounded-3xl" : "rounded-3xl p-5 sm:p-8"} ${
+      <div className={isZenMode ? "fixed inset-0 z-40 flex justify-center" : "w-[90%] max-w-[1000px] mx-auto py-8"}>
+        <div className={`${isZenMode ? "w-full h-full max-w-[1000px] p-4 sm:p-8 border-2 rounded-3xl" : "rounded-3xl p-5 sm:p-8"} ${
           darkMode ? "bg-gray-900 border-blue-500/50" : "bg-gray-50 border-blue-200"
         }`}>
           {!isZenMode && (

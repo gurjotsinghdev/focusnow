@@ -23,7 +23,7 @@ export default function AppHeader({ darkMode, onToggleDarkMode, onOpenRoutine })
 
   return (
     <header className="w-full">
-      <div className="w-[90%] mx-auto py-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="w-[90%] max-w-[1000px] mx-auto py-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <Link href="/" className="flex items-center gap-3">
           <img src="/focusnow-mark.svg" alt="FocusNow logo" className="w-8 h-8" />
           <h1 className={`text-3xl font-bold ${darkMode ? "text-blue-400" : "text-blue-600"}`}>

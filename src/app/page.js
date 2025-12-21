@@ -377,7 +377,7 @@ const App = () => {
         onToggleDarkMode={() => setDarkMode(!darkMode)}
         onOpenRoutine={() => setShowRoutineModal(true)}
       />
-      <div className="w-[90%] mx-auto py-8">
+      <div className="w-[90%] max-w-[1000px] mx-auto py-8">
         {/* Timer Section */}
         <div className={`rounded-3xl p-6 sm:p-8 mb-8 ${
           darkMode ? 'bg-gray-800' : 'bg-gray-50'
